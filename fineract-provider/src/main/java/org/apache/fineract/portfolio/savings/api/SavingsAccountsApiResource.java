@@ -41,9 +41,13 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -55,8 +59,10 @@ import org.apache.fineract.infrastructure.bulkimport.service.BulkImportWorkbookP
 import org.apache.fineract.infrastructure.bulkimport.service.BulkImportWorkbookService;
 import org.apache.fineract.infrastructure.core.api.ApiParameterHelper;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.UploadRequest;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException;
 import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSerializationSettings;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
@@ -128,11 +134,14 @@ public class SavingsAccountsApiResource {
             @QueryParam("offset") @Parameter(description = "offset") final Integer offset,
             @QueryParam("limit") @Parameter(description = "limit") final Integer limit,
             @QueryParam("orderBy") @Parameter(description = "orderBy") final String orderBy,
-            @QueryParam("sortOrder") @Parameter(description = "sortOrder") final String sortOrder) {
+            @QueryParam("sortOrder") @Parameter(description = "sortOrder") final String sortOrder,
+            @QueryParam("birthdate") @Parameter(description = "birthdate") final String birthDateStr) {
 
         context.authenticatedUser().validateHasReadPermission(SavingsApiConstants.SAVINGS_ACCOUNT_RESOURCE_NAME);
+        List<Integer> fullBirthDate = parseBirthDate(birthDateStr);
 
-        final SearchParameters searchParameters = SearchParameters.forSavings(sqlSearch, externalId, offset, limit, orderBy, sortOrder);
+        final SearchParameters searchParameters = SearchParameters.forSavings(sqlSearch, externalId, offset, limit, orderBy, sortOrder,
+                fullBirthDate.get(0), fullBirthDate.get(1));
 
         final Page<SavingsAccountData> products = savingsAccountReadPlatformService.retrieveAll(searchParameters);
 
@@ -525,5 +534,30 @@ public class SavingsAccountsApiResource {
         final Long importDocumentId = bulkImportWorkbookService.importWorkbook(GlobalEntityType.SAVINGS_TRANSACTIONS.toString(),
                 uploadedInputStream, fileDetail, locale, dateFormat);
         return toApiJsonSerializer.serialize(importDocumentId);
+    }
+
+    /**
+     * Parses the 'birthdate' query parameter in the format MM-dd into month and day integers. If the format is invalid,
+     * throws a {@link PlatformApiDataValidationException} with a standardized error message.
+     *
+     * @param birthDateStr
+     *            the birthdate query parameter in "MM-dd" format
+     * @return a Pair containing the parsed month and day as integers
+     * @throws PlatformApiDataValidationException
+     *             if the date is not in the expected format
+     */
+    private static List<Integer> parseBirthDate(String birthDateStr) {
+        if (birthDateStr != null) {
+            try {
+                LocalDate parsedDate = LocalDate.parse("2000-" + birthDateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                return List.of(parsedDate.getMonthValue(), parsedDate.getDayOfMonth());
+            } catch (DateTimeParseException e) {
+                final ApiParameterError error = ApiParameterError.parameterError("validation.msg.validation.errors.exist",
+                        "The parameter `birthdate` is invalid. Expected format is MM-dd.", "birthdate", birthDateStr);
+                throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Invalid birthdate value.",
+                        List.of(error));
+            }
+        }
+        return Arrays.asList(null, null);
     }
 }

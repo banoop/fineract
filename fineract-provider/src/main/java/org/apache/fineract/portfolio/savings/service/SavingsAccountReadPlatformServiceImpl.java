@@ -189,7 +189,8 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
         sqlBuilder.append("select " + sqlGenerator.calcFoundRows() + " ");
         sqlBuilder.append(this.savingAccountMapper.schema());
 
-        sqlBuilder.append(" join m_office o on o.id = c.office_id");
+        sqlBuilder.append(" join m_client c on c.id = sa.client_id");
+        // sqlBuilder.append(" join m_office o on o.id = c.office_id");
         sqlBuilder.append(" where o.hierarchy like ?");
 
         final Object[] objectArray = new Object[2];
@@ -230,6 +231,12 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                 } else {
                     sqlBuilder.append(sqlGenerator.limit(searchParameters.getLimit()));
                 }
+            }
+
+            if (searchParameters.isBirthDatePassed()) {
+                sqlBuilder.append(" and MONTH(c.date_of_birth) = ? and DAY(c.date_of_birth) = ?");
+                objectArray[arrayPos++] = searchParameters.getBirthMonth();
+                objectArray[arrayPos++] = searchParameters.getBirthDay();
             }
         }
         final Object[] finalObjectArray = Arrays.copyOf(objectArray, arrayPos);
