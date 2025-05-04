@@ -189,11 +189,11 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
         sqlBuilder.append("select " + sqlGenerator.calcFoundRows() + " ");
         sqlBuilder.append(this.savingAccountMapper.schema());
 
-        sqlBuilder.append(" join m_client c on c.id = sa.client_id");
-        // sqlBuilder.append(" join m_office o on o.id = c.office_id");
+        // sqlBuilder.append(" join m_client c on c.id = sa.client_id");
+        sqlBuilder.append(" join m_office o on o.id = c.office_id");
         sqlBuilder.append(" where o.hierarchy like ?");
 
-        final Object[] objectArray = new Object[2];
+        final Object[] objectArray = new Object[4];
         objectArray[0] = hierarchySearchString;
         int arrayPos = 1;
         if (searchParameters != null) {
