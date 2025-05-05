@@ -214,6 +214,11 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                 objectArray[arrayPos] = searchParameters.getOfficeId();
                 arrayPos = arrayPos + 1;
             }
+            if (searchParameters.isBirthDatePassed()) {
+                sqlBuilder.append(" and MONTH(c.date_of_birth) = ? and DAY(c.date_of_birth) = ?");
+                objectArray[arrayPos++] = searchParameters.getBirthMonth();
+                objectArray[arrayPos++] = searchParameters.getBirthDay();
+            }
             if (searchParameters.isOrderByRequested()) {
                 sqlBuilder.append(" order by ").append(searchParameters.getOrderBy());
                 this.columnValidator.validateSqlInjection(sqlBuilder.toString(), searchParameters.getOrderBy());
@@ -233,11 +238,6 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                 }
             }
 
-            if (searchParameters.isBirthDatePassed()) {
-                sqlBuilder.append(" and MONTH(c.date_of_birth) = ? and DAY(c.date_of_birth) = ?");
-                objectArray[arrayPos++] = searchParameters.getBirthMonth();
-                objectArray[arrayPos++] = searchParameters.getBirthDay();
-            }
         }
         final Object[] finalObjectArray = Arrays.copyOf(objectArray, arrayPos);
         return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), finalObjectArray, this.savingAccountMapper);
